@@ -1,0 +1,15 @@
+# Exclude docs folder from Git pushes
+docs/
+
+# Local env files
+.env
+.env.*
+
+# Runtime data
+db/
+uploads/
+public/assets/images/uploads/logos/
+
+# OS / editor
+.DS_Store
+Thumbs.db

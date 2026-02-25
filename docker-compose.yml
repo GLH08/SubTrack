@@ -1,0 +1,19 @@
+services:
+  subtrack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: subtrack-app
+    ports:
+      - "18082:80"
+    environment:
+      TZ: Asia/Shanghai
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_BASE_URL: ${APP_BASE_URL:-}
+      SUBTRACK_DB_PATH: /var/www/html/db/subtrack.db
+      SUBTRACK_CRON_TOKEN: ${SUBTRACK_CRON_TOKEN:?SUBTRACK_CRON_TOKEN is required}
+      SUBTRACK_ADMIN_PASSWORD: ${SUBTRACK_ADMIN_PASSWORD:?SUBTRACK_ADMIN_PASSWORD is required}
+    volumes:
+      - ./db:/var/www/html/db
+      - ./public/assets/images/uploads/logos:/var/www/html/public/assets/images/uploads/logos
+    restart: unless-stopped
