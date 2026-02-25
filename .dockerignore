@@ -8,6 +8,7 @@ docs/
 # Local runtime/state data
 db/
 uploads/
+data/uploads/
 public/assets/images/uploads/logos/
 
 # Local env files

@@ -25,7 +25,8 @@ SubTrack 是一个轻量的订阅管理系统，提供：
 
 ```env
 APP_DEBUG=0
-APP_BASE_URL=https://your.domain.com
+# 可留空；生产建议填写为 HTTPS 正式域名
+APP_BASE_URL=
 SUBTRACK_ADMIN_PASSWORD=ChangeToAStrongPassword
 SUBTRACK_CRON_TOKEN=ChangeToALongRandomToken
 ```
@@ -76,7 +77,7 @@ services:
       SUBTRACK_ADMIN_PASSWORD: ${SUBTRACK_ADMIN_PASSWORD:?SUBTRACK_ADMIN_PASSWORD is required}
     volumes:
       - ./db:/var/www/html/db
-      - ./public/assets/images/uploads/logos:/var/www/html/public/assets/images/uploads/logos
+      - ./data/uploads:/var/www/html/public/assets/images/uploads
     restart: unless-stopped
 ```
 
@@ -118,10 +119,16 @@ docker compose -f docker-compose.ghcr.yml up -d
 | 变量名 | 必填 | 说明 |
 |---|---|---|
 | `APP_DEBUG` | 否 | `0` 或 `1`，生产建议 `0` |
-| `APP_BASE_URL` | 建议 | 站点访问地址（建议 HTTPS） |
+| `APP_BASE_URL` | 否 | 可留空；留空时重置链接将使用当前访问地址自动生成。生产建议设置为 HTTPS 正式域名 |
 | `SUBTRACK_ADMIN_PASSWORD` | 是 | 初始化管理员密码 |
 | `SUBTRACK_CRON_TOKEN` | 是 | HTTP cron 鉴权 token |
 | `SUBTRACK_DB_PATH` | 否 | 容器内数据库路径（默认已配置） |
+
+通知与汇率相关配置说明：
+- 货币汇率 API 提供商/API Key：在后台设置页保存（数据库）
+- Telegram Token / Chat ID：在后台设置页保存（数据库）
+- Email SMTP 参数：在后台设置页保存（数据库）
+- 因此不需要在 `.env` 中额外配置这些项
 
 ---
 
@@ -178,12 +185,12 @@ php cli/cron.php exchange -v
 ### 7.1 备份
 最少备份以下目录：
 - `db/`
-- `public/assets/images/uploads/logos/`
+- `data/uploads/`（其中包含 `logos/`）
 
 示例：
 
 ```bash
-tar -czf subtrack-backup-$(date +%F).tar.gz db public/assets/images/uploads/logos
+tar -czf subtrack-backup-$(date +%F).tar.gz db data/uploads
 ```
 
 ### 7.2 恢复

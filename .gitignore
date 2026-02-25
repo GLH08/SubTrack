@@ -8,6 +8,7 @@ docs/
 # Runtime data
 db/
 uploads/
+data/uploads/
 public/assets/images/uploads/logos/
 
 # OS / editor

@@ -15,5 +15,5 @@ services:
       SUBTRACK_ADMIN_PASSWORD: ${SUBTRACK_ADMIN_PASSWORD:?SUBTRACK_ADMIN_PASSWORD is required}
     volumes:
       - ./db:/var/www/html/db
-      - ./public/assets/images/uploads/logos:/var/www/html/public/assets/images/uploads/logos
+      - ./data/uploads:/var/www/html/public/assets/images/uploads
     restart: unless-stopped
