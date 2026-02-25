@@ -1,59 +1,51 @@
 # SubTrack
 
-SubTrack 是一个轻量订阅管理系统，支持登录鉴权、订阅管理、统计分析、通知提醒与密码重置。
+SubTrack 是一个轻量的订阅管理系统，提供：
+- 账号登录与会话管理
+- 订阅增删改查、批量操作
+- 统计分析与历史记录
+- 汇率更新与多币种支持
+- 通知提醒（Telegram / Email）
+- 数据导入导出
 
 本项目支持两种部署方式：
-- 原代码部署（本地源码 + Docker 构建）
-- 远程镜像部署（从 GHCR 拉取镜像）
+1. **源码部署**（本地代码构建镜像）
+2. **GHCR 镜像部署**（服务器直接拉取远程镜像）
 
 ---
 
-## 一、准备条件
+## 1. 快速开始（源码部署）
 
+### 1.1 前置条件
 - Docker 24+
 - Docker Compose V2
-- 一个可用域名（用于 HTTPS 反代）
 
----
-
-## 二、GitHub Actions：构建并推送 GHCR 镜像
-
-已提供工作流：
-- `.github/workflows/ghcr.yml`
-
-触发条件：
-- push 到 `main/master`
-- push `v*` 标签
-- 手动触发 `workflow_dispatch`
-
-镜像地址规则：
-- `ghcr.io/<你的GitHub用户名小写>/subtrack:<tag>`
-- 默认分支会额外推送 `latest`
-
-> 注意：工作流已配置 `paths-ignore: docs/**`，仅修改 docs 不触发镜像构建。
-
----
-
-## 三、部署方式 A：原代码部署（保持现有方式）
-
-### 1) 配置环境变量
-
+### 1.2 创建环境变量文件
 在项目根目录创建 `.env`：
 
 ```env
 APP_DEBUG=0
 APP_BASE_URL=https://your.domain.com
-SUBTRACK_ADMIN_PASSWORD=请替换为强密码
-SUBTRACK_CRON_TOKEN=请替换为高强度随机串
+SUBTRACK_ADMIN_PASSWORD=ChangeToAStrongPassword
+SUBTRACK_CRON_TOKEN=ChangeToALongRandomToken
 ```
 
-### 2) 启动
+建议生成随机 token：
+
+```bash
+openssl rand -hex 32
+```
+
+### 1.3 启动服务
 
 ```bash
 docker compose up -d --build
 ```
 
-### 3) 验证
+默认映射端口：`18082`，访问：
+- `http://127.0.0.1:18082`
+
+### 1.4 健康检查（上线前必做）
 
 ```bash
 docker exec subtrack-app php /var/www/html/cli/preflight.php
@@ -61,9 +53,12 @@ docker exec subtrack-app php /var/www/html/cli/preflight.php
 
 ---
 
-## 四、部署方式 B：远程镜像部署（GHCR）
+## 2. GHCR 镜像部署（推荐生产）
 
-新建 `docker-compose.ghcr.yml`（示例）：
+当前仓库镜像地址：
+- `ghcr.io/glh08/subtrack:latest`
+
+### 2.1 新建 `docker-compose.ghcr.yml`
 
 ```yaml
 services:
@@ -85,13 +80,15 @@ services:
     restart: unless-stopped
 ```
 
-### 启动命令
+### 2.2 启动与升级
+
+首次启动：
 
 ```bash
 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
-### 升级镜像
+更新镜像：
 
 ```bash
 docker compose -f docker-compose.ghcr.yml pull
@@ -100,82 +97,151 @@ docker compose -f docker-compose.ghcr.yml up -d
 
 ---
 
-## 五、宿主机 Nginx 反向代理（完整可用模板）
+## 3. GitHub Actions 自动构建 GHCR
 
-> 使用者仅需修改：
-> - `server_name`（域名）
-> - `ssl_certificate`（证书路径）
-> - `ssl_certificate_key`（私钥路径）
+工作流文件：
+- `.github/workflows/ghcr.yml`
 
-将以下内容保存为：`/etc/nginx/conf.d/subtrack.conf`
+触发条件：
+- push 到 `main` / `master`
+- push `v*` 标签
+- 手动触发 `workflow_dispatch`
 
-```nginx
-server {
-    listen 80;
-    server_name your.domain.com;
-    return 301 https://$host$request_uri;
-}
+镜像标签规则：
+- 分支构建：`ghcr.io/<owner-lowercase>/subtrack:<branch-tag>`
+- 默认分支额外推送：`latest`
 
-server {
-    listen 443 ssl http2;
-    server_name your.domain.com;
+---
 
-    ssl_certificate     /etc/nginx/ssl/your.domain.com/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/your.domain.com/privkey.pem;
+## 4. 环境变量说明
 
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
+| 变量名 | 必填 | 说明 |
+|---|---|---|
+| `APP_DEBUG` | 否 | `0` 或 `1`，生产建议 `0` |
+| `APP_BASE_URL` | 建议 | 站点访问地址（建议 HTTPS） |
+| `SUBTRACK_ADMIN_PASSWORD` | 是 | 初始化管理员密码 |
+| `SUBTRACK_CRON_TOKEN` | 是 | HTTP cron 鉴权 token |
+| `SUBTRACK_DB_PATH` | 否 | 容器内数据库路径（默认已配置） |
 
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
+---
 
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+## 5. 宿主机 Nginx 反向代理（HTTPS）
 
-    client_max_body_size 10m;
+完整模板文件：
+- `nginx.reverse-proxy.example.conf`
 
-    location / {
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_set_header X-Forwarded-Host $host;
+你只需要改 3 处即可直接使用：
+1. `server_name`
+2. `ssl_certificate`
+3. `ssl_certificate_key`
 
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-
-        proxy_pass http://127.0.0.1:18082;
-    }
-}
-```
-
-重载 Nginx：
+部署步骤（Linux）：
 
 ```bash
+cp nginx.reverse-proxy.example.conf /etc/nginx/conf.d/subtrack.conf
 nginx -t && systemctl reload nginx
 ```
 
----
-
-## 六、上线后建议
-
-- 定时备份 `db/subtrack.db`
-- 使用 CLI cron：
-  - `php /var/www/html/cli/cron.php reminders -v`
-- 如需 HTTP 触发 cron，必须带 `X-CRON-TOKEN`
-- 每次升级后执行：
-  - `docker exec subtrack-app php /var/www/html/cli/preflight.php`
+反向代理目标默认是：
+- `http://127.0.0.1:18082`
 
 ---
 
-## 七、关于 docs 目录不推送
+## 6. 定时任务（Cron）
+
+推荐使用 CLI cron（更稳定）：
+
+```bash
+# 每小时执行一次
+0 * * * * cd /path/to/SubTrack && php cli/cron.php all
+```
+
+仅执行提醒：
+
+```bash
+php cli/cron.php reminders -v
+```
+
+仅执行汇率更新：
+
+```bash
+php cli/cron.php exchange -v
+```
+
+如果你使用 HTTP 触发 cron，必须在请求头带：
+- `X-CRON-TOKEN: <SUBTRACK_CRON_TOKEN>`
+
+---
+
+## 7. 备份与恢复
+
+### 7.1 备份
+最少备份以下目录：
+- `db/`
+- `public/assets/images/uploads/logos/`
+
+示例：
+
+```bash
+tar -czf subtrack-backup-$(date +%F).tar.gz db public/assets/images/uploads/logos
+```
+
+### 7.2 恢复
+将备份文件恢复到原路径后，重启容器：
+
+```bash
+docker compose restart
+```
+
+---
+
+## 8. 安全基线（已实现）
+
+- 初始化管理员密码改为环境变量注入
+- 关键会话 Cookie 安全属性（HttpOnly / SameSite / Secure）
+- CSRF 校验使用安全比较
+- cron 接口强制 token 鉴权
+- Nginx 安全响应头（CSP / X-Frame-Options / X-Content-Type-Options 等）
+- 调试接口已加保护
+
+---
+
+## 9. 常见运维命令
+
+查看容器状态：
+
+```bash
+docker ps
+```
+
+查看日志：
+
+```bash
+docker logs -f subtrack-app
+```
+
+进入容器：
+
+```bash
+docker exec -it subtrack-app sh
+```
+
+重建并重启：
+
+```bash
+docker compose up -d --build
+```
+
+---
+
+## 10. `docs/` 不参与推送与构建
 
 已配置：
-- `.gitignore` 忽略 `docs/`（默认不会进入 Git 提交与推送）
-- `.github/workflows/ghcr.yml` 对 `docs/**` 变更不触发镜像构建
-- `.dockerignore` 忽略 `docs/`（不进入镜像构建上下文）
+- `.gitignore`：忽略 `docs/`
+- `.dockerignore`：忽略 `docs/`
+- `.github/workflows/ghcr.yml`：`paths-ignore: docs/**`
+
+因此：
+- `docs/` 默认不会进入 Git 提交
+- `docs/` 不会进入 Docker 镜像上下文
+- 仅改 `docs/` 不触发镜像构建
