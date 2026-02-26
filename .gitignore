@@ -6,10 +6,10 @@ docs/
 .env.*
 
 # Runtime data
-db/
-uploads/
-data/uploads/
-public/assets/images/uploads/logos/
+/db/
+/uploads/
+/data/uploads/
+/public/assets/images/uploads/logos/
 
 # OS / editor
 .DS_Store
