@@ -1,8 +1,8 @@
 <?php
 
-date_default_timezone_set('Asia/Shanghai');
-
 declare(strict_types=1);
+
+date_default_timezone_set('Asia/Shanghai');
 
 require_once __DIR__ . '/../../../includes/connect.php';
 require_once __DIR__ . '/../../../includes/checksession.php';
